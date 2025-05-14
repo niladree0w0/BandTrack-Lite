@@ -7,13 +7,16 @@ export type BaseEmployee = {
   id: string;
   name: string;
   workType: string;
-  contact: string;
+  contact: string; // Represents a phone number
 };
 
 export type InHouseEmployee = BaseEmployee;
 
+// Note: A subcontractor with "both" dnrCapacity selected in the form
+// will be stored as two separate entries: one with dnrCapacity="300dnr" and one with dnrCapacity="600dnr".
+// The dnrCapacity field here reflects the effective capacity for that specific record.
 export type Subcontractor = BaseEmployee & {
-  dnrCapacity: DnrCapacity;
+  dnrCapacity: "300dnr" | "600dnr" | "none"; // "both" is a form-only option that splits into 2 records
 };
 
 export type MaterialDispatch = {

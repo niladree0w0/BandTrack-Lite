@@ -23,18 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { placeholderSubcontractors, placeholderDispatches } from "@/lib/placeholder-data"; // Updated import
-import type { Subcontractor } from "@/lib/definitions"; // Updated import for type safety
+import { placeholderSubcontractors, placeholderDispatches } from "@/lib/placeholder-data"; 
+import type { Subcontractor } from "@/lib/definitions"; 
 import { materialTypes } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialDispatch } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { Send } from "lucide-react"; // PlusCircle was unused
-
-// Cannot define metadata in client component, move to parent or generate separately
-// export const metadata: Metadata = {
-//   title: 'Dispatch Manager',
-// };
+import { Send } from "lucide-react"; 
 
 const dispatchFormSchema = z.object({
   subcontractorId: z.string().min(1, "Subcontractor is required."),
@@ -47,15 +42,13 @@ type DispatchFormValues = z.infer<typeof dispatchFormSchema>;
 export default function DispatchPage() {
   const { toast } = useToast();
   const [dispatches, setDispatches] = useState<MaterialDispatch[]>([]);
-  // Use placeholderSubcontractors directly
-  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>(placeholderSubcontractors);
+  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>([]);
 
   useEffect(() => {
-    // Simulate fetching data
     setDispatches(placeholderDispatches);
-    // If subcontractors could change, you might fetch them here too.
-    // For now, they are static from placeholder-data.
-    // setSubcontractorOptions(placeholderSubcontractors); // Already initialized
+    // Subcontractors list might now have duplicates by name if they handle "both" capacities.
+    // The ID will be unique.
+    setSubcontractorOptions(placeholderSubcontractors);
   }, []);
   
   const form = useForm<DispatchFormValues>({
@@ -68,10 +61,11 @@ export default function DispatchPage() {
   });
 
   function onSubmit(data: DispatchFormValues) {
+    const selectedSubcontractor = subcontractorOptions.find(s => s.id === data.subcontractorId);
     const newDispatch: MaterialDispatch = {
-      id: `disp${dispatches.length + 1}`,
+      id: `disp${dispatches.length + 1}`, // Consider a more robust ID generation
       subcontractorId: data.subcontractorId,
-      subcontractorName: subcontractorOptions.find(s => s.id === data.subcontractorId)?.name,
+      subcontractorName: selectedSubcontractor?.name,
       materialType: data.materialType,
       quantity: data.quantity,
       dispatchDate: new Date().toISOString(),
@@ -79,7 +73,7 @@ export default function DispatchPage() {
     setDispatches(prev => [newDispatch, ...prev]);
     toast({
       title: "Dispatch Created",
-      description: `Material ${data.materialType} dispatched to ${newDispatch.subcontractorName}.`,
+      description: `Material ${data.materialType} dispatched to ${newDispatch.subcontractorName || 'Subcontractor'} (${selectedSubcontractor?.dnrCapacity || ''}).`,
     });
     form.reset();
   }
@@ -89,7 +83,7 @@ export default function DispatchPage() {
       <PageHeader
         title="Dispatch Manager"
         description="Streamline material dispatch to subcontractors."
-        actions={<Button onClick={() => form.handleSubmit(onSubmit)()}><Send className="mr-2 h-4 w-4" />Create Dispatch</Button>}
+        actions={<Button onClick={form.handleSubmit(onSubmit)}><Send className="mr-2 h-4 w-4" />Create Dispatch</Button>}
       />
       <Card className="shadow-md">
         <CardHeader>
@@ -114,7 +108,7 @@ export default function DispatchPage() {
                         <SelectContent>
                           {subcontractorOptions.map((sub) => (
                             <SelectItem key={sub.id} value={sub.id}>
-                              {sub.name}
+                              {sub.name} ({sub.dnrCapacity === "none" ? "No DNR Spec" : sub.dnrCapacity.toUpperCase()}) - ID: {sub.id}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -161,7 +155,6 @@ export default function DispatchPage() {
                   )}
                 />
               </div>
-              {/* The submit button is in PageHeader actions for this layout */}
             </form>
           </Form>
         </CardContent>
@@ -176,11 +169,15 @@ export default function DispatchPage() {
             <p className="text-sm text-muted-foreground">No dispatches recorded yet.</p>
           ) : (
             <ul className="space-y-2">
-              {dispatches.slice(0, 5).map(d => (
-                <li key={d.id} className="text-sm p-2 border rounded-md bg-muted/50">
-                  {d.quantity} units of {d.materialType} to {d.subcontractorName || d.subcontractorId} on {new Date(d.dispatchDate).toLocaleDateString()}
-                </li>
-              ))}
+              {dispatches.slice(0, 5).map(d => {
+                const sub = subcontractorOptions.find(s => s.id === d.subcontractorId);
+                return (
+                  <li key={d.id} className="text-sm p-2 border rounded-md bg-muted/50">
+                    {d.quantity} units of {d.materialType} to {d.subcontractorName || d.subcontractorId} 
+                    {sub ? ` (${sub.dnrCapacity.toUpperCase()})` : ''} on {new Date(d.dispatchDate).toLocaleDateString()}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>

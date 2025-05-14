@@ -38,30 +38,36 @@ import { Label } from "@/components/ui/label";
 const baseSchema = {
   name: z.string().min(2, "Name must be at least 2 characters."),
   workType: z.string().min(2, "Work type must be at least 2 characters."),
-  contact: z.string().email("Invalid email address."),
+  contact: z.string().min(7, "Phone number must be at least 7 digits.").regex(/^\+?[0-9\s-()]{7,20}$/, "Invalid phone number format."),
 };
 
 const inHouseEmployeeSchema = z.object(baseSchema);
 
-const subcontractorSchema = z.object({
+// For the form, dnrCapacity can be "both". This will be handled during saving.
+const subcontractorFormSchema = z.object({
   ...baseSchema,
-  dnrCapacity: z.enum(dnrCapacities, {
+  dnrCapacity: z.enum(dnrCapacities, { // dnrCapacities includes "both"
     errorMap: () => ({ message: "DNR capacity is required." }),
   }),
 });
 
-type FormValues = z.infer<typeof inHouseEmployeeSchema> | z.infer<typeof subcontractorSchema>;
+// Merged type for form values, specific types for saving
+type InHouseFormValues = z.infer<typeof inHouseEmployeeSchema>;
+type SubcontractorFormValues = z.infer<typeof subcontractorFormSchema>;
+type FormValues = InHouseFormValues | SubcontractorFormValues;
+
 
 interface AddEmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (person: InHouseEmployee | Subcontractor) => void;
+  // onSave receives the original form data for subcontractors, including "both" if selected
+  onSave: (person: Omit<InHouseEmployee, "id"> | (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity })) => void;
 }
 
 export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDialogProps) {
   const [personType, setPersonType] = React.useState<"inHouse" | "subcontractor">("inHouse");
 
-  const currentSchema = personType === "inHouse" ? inHouseEmployeeSchema : subcontractorSchema;
+  const currentSchema = personType === "inHouse" ? inHouseEmployeeSchema : subcontractorFormSchema;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(currentSchema),
@@ -69,7 +75,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
       name: "",
       workType: "",
       contact: "",
-      ...(personType === "subcontractor" && { dnrCapacity: "none" }),
+      ...(personType === "subcontractor" && { dnrCapacity: "none" as DnrCapacity }),
     },
   });
   
@@ -80,16 +86,17 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
         contact: "",
         ...(personType === "subcontractor" ? { dnrCapacity: "none" as DnrCapacity } : {}),
     });
-  }, [personType, form]);
+  }, [personType, form, open]); // Reset form when personType changes or dialog opens
 
 
   const onSubmit = (data: FormValues) => {
     if (personType === "inHouse") {
       onSave(data as Omit<InHouseEmployee, "id">);
     } else {
-      onSave(data as Omit<Subcontractor, "id">);
+      // Pass the subcontractor data as is, including the dnrCapacity which might be "both"
+      onSave(data as (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity }));
     }
-    form.reset();
+    // form.reset(); // Reset happens in useEffect on open state change
     onOpenChange(false); // Close dialog on successful save
   };
 
@@ -107,7 +114,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
             <FormField
               control={form.control}
               name="personTypeInternal" // Not part of schema, just for RadioGroup
-              render={({ field }) => ( // field is not used directly here
+              render={() => ( 
                 <FormItem className="space-y-3">
                   <FormLabel>Personnel Type</FormLabel>
                   <FormControl>
@@ -168,9 +175,9 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
               name="contact"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Info (Email)</FormLabel>
+                  <FormLabel>Contact Info (Phone)</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="e.g., john.doe@example.com" {...field} />
+                    <Input type="tel" placeholder="e.g., 555-123-4567" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -184,16 +191,20 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>DNR Capacity</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value as DnrCapacity | undefined}>
+                    <Select 
+                        onValueChange={field.onChange} 
+                        // Ensure defaultValue is correctly typed; it comes from dnrCapacities
+                        defaultValue={field.value as DnrCapacity | undefined}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select DNR capacity" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {dnrCapacities.map((capacity) => (
+                        {dnrCapacities.map((capacity) => ( // dnrCapacities includes "both"
                           <SelectItem key={capacity} value={capacity}>
-                            {capacity.toUpperCase()}
+                            {capacity === "both" ? "Both 300dnr & 600dnr" : capacity.toUpperCase()}
                           </SelectItem>
                         ))}
                       </SelectContent>

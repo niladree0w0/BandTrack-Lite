@@ -23,18 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { placeholderSubcontractors, placeholderReturns } from "@/lib/placeholder-data"; // Updated import
-import type { Subcontractor } from "@/lib/definitions"; // Updated import for type safety
+import { placeholderSubcontractors, placeholderReturns } from "@/lib/placeholder-data";
+import type { Subcontractor } from "@/lib/definitions";
 import { qualityStatuses } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialReturn } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { Save } from "lucide-react"; // ArchiveRestore was unused
-
-// Cannot define metadata in client component
-// export const metadata: Metadata = {
-//   title: 'Return Logger',
-// };
+import { Save } from "lucide-react";
 
 const returnFormSchema = z.object({
   subcontractorId: z.string().min(1, "Subcontractor is required."),
@@ -49,15 +44,11 @@ type ReturnFormValues = z.infer<typeof returnFormSchema>;
 export default function ReturnsPage() {
   const { toast } = useToast();
   const [returns, setReturns] = useState<MaterialReturn[]>([]);
-  // Use placeholderSubcontractors directly
-  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>(placeholderSubcontractors);
+  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>([]);
 
   useEffect(() => {
-    // Simulate fetching data
     setReturns(placeholderReturns);
-    // If subcontractors could change, you might fetch them here too.
-    // For now, they are static from placeholder-data.
-    // setSubcontractorOptions(placeholderSubcontractors); // Already initialized
+    setSubcontractorOptions(placeholderSubcontractors);
   }, []);
 
   const form = useForm<ReturnFormValues>({
@@ -69,10 +60,11 @@ export default function ReturnsPage() {
   });
 
   function onSubmit(data: ReturnFormValues) {
+    const selectedSubcontractor = subcontractorOptions.find(s => s.id === data.subcontractorId);
     const newReturn: MaterialReturn = {
-      id: `ret${returns.length + 1}`,
+      id: `ret${returns.length + 1}`, // Consider a more robust ID generation
       subcontractorId: data.subcontractorId,
-      subcontractorName: subcontractorOptions.find(s => s.id === data.subcontractorId)?.name,
+      subcontractorName: selectedSubcontractor?.name,
       quantity: data.quantity,
       qualityStatus: data.qualityStatus,
       returnDate: new Date().toISOString(),
@@ -81,7 +73,7 @@ export default function ReturnsPage() {
 
     toast({
       title: "Return Logged",
-      description: `${data.quantity} units returned by ${newReturn.subcontractorName} with status ${data.qualityStatus}.`,
+      description: `${data.quantity} units returned by ${newReturn.subcontractorName || 'Subcontractor'} (${selectedSubcontractor?.dnrCapacity || ''}) with status ${data.qualityStatus}.`,
     });
     form.reset();
   }
@@ -91,7 +83,7 @@ export default function ReturnsPage() {
       <PageHeader
         title="Return Logger"
         description="Record finished goods returned by subcontractors."
-        actions={<Button onClick={() => form.handleSubmit(onSubmit)()}><Save className="mr-2 h-4 w-4" />Log Return</Button>}
+        actions={<Button onClick={form.handleSubmit(onSubmit)}><Save className="mr-2 h-4 w-4" />Log Return</Button>}
       />
       <Card className="shadow-md">
         <CardHeader>
@@ -116,7 +108,7 @@ export default function ReturnsPage() {
                         <SelectContent>
                           {subcontractorOptions.map((sub) => (
                             <SelectItem key={sub.id} value={sub.id}>
-                              {sub.name}
+                               {sub.name} ({sub.dnrCapacity === "none" ? "No DNR Spec" : sub.dnrCapacity.toUpperCase()}) - ID: {sub.id}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -163,7 +155,6 @@ export default function ReturnsPage() {
                   )}
                 />
               </div>
-              {/* Submit button is in PageHeader actions */}
             </form>
           </Form>
         </CardContent>
@@ -178,11 +169,15 @@ export default function ReturnsPage() {
             <p className="text-sm text-muted-foreground">No returns logged yet.</p>
           ) : (
              <ul className="space-y-2">
-              {returns.slice(0,5).map(r => (
-                <li key={r.id} className="text-sm p-2 border rounded-md bg-muted/50">
-                  {r.quantity} units from {r.subcontractorName || r.subcontractorId}, Status: {r.qualityStatus}, on {new Date(r.returnDate).toLocaleDateString()}
-                </li>
-              ))}
+              {returns.slice(0,5).map(r => {
+                const sub = subcontractorOptions.find(s => s.id === r.subcontractorId);
+                return (
+                  <li key={r.id} className="text-sm p-2 border rounded-md bg-muted/50">
+                    {r.quantity} units from {r.subcontractorName || r.subcontractorId}
+                    {sub ? ` (${sub.dnrCapacity.toUpperCase()})` : ''}, Status: {r.qualityStatus}, on {new Date(r.returnDate).toLocaleDateString()}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
