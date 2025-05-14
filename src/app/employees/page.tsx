@@ -1,4 +1,8 @@
 
+"use client";
+
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   Table,
@@ -14,23 +18,51 @@ import { placeholderInHouseEmployees, placeholderSubcontractors } from "@/lib/pl
 import type { InHouseEmployee, Subcontractor } from "@/lib/definitions";
 import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Metadata } from 'next';
+import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog";
+import { useToast } from "@/hooks/use-toast";
 
-export const metadata: Metadata = {
-  title: 'Employee & Subcontractor Roster',
-};
+// Metadata should be handled in a parent layout or a dedicated metadata export if this remains a client component.
+// export const metadata: Metadata = {
+//   title: 'Employee & Subcontractor Roster',
+// };
 
-export default async function EmployeesPage() {
-  const inHouseEmployees: InHouseEmployee[] = placeholderInHouseEmployees;
-  const subcontractors: Subcontractor[] = placeholderSubcontractors;
+export default function EmployeesPage() {
+  const [inHouseEmployees, setInHouseEmployees] = useState<InHouseEmployee[]>([]);
+  const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Simulate fetching initial data
+    setInHouseEmployees(placeholderInHouseEmployees);
+    setSubcontractors(placeholderSubcontractors);
+  }, []);
+
+  const handleSaveEmployee = (person: InHouseEmployee | Subcontractor) => {
+    const newId = `emp${Date.now()}`; // Simple ID generation
+    if ('dnrCapacity' in person) { // It's a Subcontractor
+      setSubcontractors(prev => [{ ...person, id: newId }, ...prev]);
+      toast({
+        title: "Subcontractor Added",
+        description: `${person.name} has been added to the roster.`,
+      });
+    } else { // It's an In-House Employee
+      setInHouseEmployees(prev => [{ ...person, id: newId }, ...prev]);
+      toast({
+        title: "In-House Employee Added",
+        description: `${person.name} has been added to the roster.`,
+      });
+    }
+    setIsAddDialogOpen(false);
+  };
 
   return (
-    <div className="flex flex-col gap-8"> {/* Increased gap for better separation */}
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Employee & Subcontractor Roster"
         description="Manage your lists of in-house employees and subcontractors, including their DNR capacities."
         actions={
-          <Button disabled> {/* Add functionality later */}
+          <Button onClick={() => setIsAddDialogOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Add New
           </Button>
@@ -62,7 +94,7 @@ export default async function EmployeesPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No in-house employees found.
+                    No in-house employees found. Click "Add New" to add one.
                   </TableCell>
                 </TableRow>
               )}
@@ -102,7 +134,7 @@ export default async function EmployeesPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No subcontractors found.
+                    No subcontractors found. Click "Add New" to add one.
                   </TableCell>
                 </TableRow>
               )}
@@ -110,6 +142,11 @@ export default async function EmployeesPage() {
           </Table>
         </CardContent>
       </Card>
+      <AddEmployeeDialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen}
+        onSave={handleSaveEmployee}
+      />
     </div>
   );
 }
