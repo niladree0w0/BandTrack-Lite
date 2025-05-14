@@ -32,108 +32,133 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { dnrCapacities, type InHouseEmployee, type Subcontractor, type DnrCapacity } from "@/lib/definitions";
+import { dnrCapacities, type InHouseEmployee, type Subcontractor, type DnrCapacity, type BaseEmployee } from "@/lib/definitions";
 import { Label } from "@/components/ui/label";
 
-const baseSchema = {
+// Combined type for form values to handle both creation and editing
+export type PersonnelFormValues = Omit<BaseEmployee, "id"> & {
+  id?: string; // Optional ID, present during edit
+  personType: "inHouse" | "subcontractor";
+  dnrCapacity?: DnrCapacity; // Optional, only for subcontractors
+};
+
+
+const personnelFormSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(2, "Name must be at least 2 characters."),
   workType: z.string().min(2, "Work type must be at least 2 characters."),
   contact: z.string().min(7, "Phone number must be at least 7 digits.").regex(/^\+?[0-9\s-()]{7,20}$/, "Invalid phone number format."),
-};
-
-const inHouseEmployeeSchema = z.object(baseSchema);
-
-// For the form, dnrCapacity can be "both". This will be handled during saving.
-const subcontractorFormSchema = z.object({
-  ...baseSchema,
-  dnrCapacity: z.enum(dnrCapacities, { // dnrCapacities includes "both"
-    errorMap: () => ({ message: "DNR capacity is required." }),
-  }),
+  personType: z.enum(["inHouse", "subcontractor"]),
+  dnrCapacity: z.enum(dnrCapacities).optional(),
+}).refine(data => {
+  if (data.personType === "subcontractor" && !data.dnrCapacity) {
+    return false;
+  }
+  return true;
+}, {
+  message: "DNR capacity is required for subcontractors.",
+  path: ["dnrCapacity"],
 });
-
-// Merged type for form values, specific types for saving
-type InHouseFormValues = z.infer<typeof inHouseEmployeeSchema>;
-type SubcontractorFormValues = z.infer<typeof subcontractorFormSchema>;
-type FormValues = InHouseFormValues | SubcontractorFormValues;
 
 
 interface AddEmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // onSave receives the original form data for subcontractors, including "both" if selected
-  onSave: (person: Omit<InHouseEmployee, "id"> | (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity })) => void;
+  onSave: (person: PersonnelFormValues) => void;
+  initialData?: Partial<PersonnelFormValues>; // For editing
 }
 
-export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDialogProps) {
-  const [personType, setPersonType] = React.useState<"inHouse" | "subcontractor">("inHouse");
-
-  const currentSchema = personType === "inHouse" ? inHouseEmployeeSchema : subcontractorFormSchema;
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(currentSchema),
+export function AddEmployeeDialog({ open, onOpenChange, onSave, initialData }: AddEmployeeDialogProps) {
+  const isEditMode = !!initialData?.id;
+  const [personType, setPersonType] = React.useState<"inHouse" | "subcontractor">(initialData?.personType || "inHouse");
+  
+  const form = useForm<PersonnelFormValues>({
+    resolver: zodResolver(personnelFormSchema),
     defaultValues: {
-      name: "",
-      workType: "",
-      contact: "",
-      ...(personType === "subcontractor" && { dnrCapacity: "none" as DnrCapacity }),
+      id: initialData?.id || undefined,
+      name: initialData?.name || "",
+      workType: initialData?.workType || "",
+      contact: initialData?.contact || "",
+      personType: initialData?.personType || "inHouse",
+      dnrCapacity: initialData?.dnrCapacity || (initialData?.personType === "subcontractor" ? "none" : undefined),
     },
   });
   
   React.useEffect(() => {
-    form.reset({
-        name: "",
-        workType: "",
-        contact: "",
-        ...(personType === "subcontractor" ? { dnrCapacity: "none" as DnrCapacity } : {}),
-    });
-  }, [personType, form, open]); // Reset form when personType changes or dialog opens
+    if (open) {
+      const defaultDnrCapacity = initialData?.personType === "subcontractor" 
+        ? (initialData.dnrCapacity || "none") 
+        : undefined;
 
-
-  const onSubmit = (data: FormValues) => {
-    if (personType === "inHouse") {
-      onSave(data as Omit<InHouseEmployee, "id">);
-    } else {
-      // Pass the subcontractor data as is, including the dnrCapacity which might be "both"
-      onSave(data as (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity }));
+      form.reset({
+        id: initialData?.id || undefined,
+        name: initialData?.name || "",
+        workType: initialData?.workType || "",
+        contact: initialData?.contact || "",
+        personType: initialData?.personType || "inHouse",
+        dnrCapacity: personType === "subcontractor" ? (initialData?.dnrCapacity || "none") : undefined,
+      });
+      setPersonType(initialData?.personType || "inHouse");
     }
-    // form.reset(); // Reset happens in useEffect on open state change
-    onOpenChange(false); // Close dialog on successful save
+  }, [open, initialData, form, personType]);
+
+  React.useEffect(() => {
+    // Update dnrCapacity in form when personType changes
+    if (personType === "inHouse") {
+      form.setValue("dnrCapacity", undefined);
+    } else if (personType === "subcontractor" && !form.getValues("dnrCapacity")) {
+      form.setValue("dnrCapacity", "none");
+    }
+  }, [personType, form]);
+
+
+  const onSubmit = (data: PersonnelFormValues) => {
+    onSave(data);
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) {
+        form.reset({ name: "", workType: "", contact: "", personType: "inHouse", dnrCapacity: undefined });
+        setPersonType("inHouse");
+      }
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Add New Personnel</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Personnel" : "Add New Personnel"}</DialogTitle>
           <DialogDescription>
-            Fill in the details for the new employee or subcontractor.
+            {isEditMode ? "Update the details for the personnel." : "Fill in the details for the new employee or subcontractor."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="personTypeInternal" // Not part of schema, just for RadioGroup
-              render={() => ( 
+              name="personType"
+              render={({ field }) => ( 
                 <FormItem className="space-y-3">
                   <FormLabel>Personnel Type</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={(value: "inHouse" | "subcontractor") => {
+                        field.onChange(value);
                         setPersonType(value);
                       }}
-                      defaultValue={personType}
+                      value={field.value}
                       className="flex space-x-4"
+                      disabled={isEditMode} // Cannot change type during edit
                     >
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
-                          <RadioGroupItem value="inHouse" id="inHouse" />
+                          <RadioGroupItem value="inHouse" id="inHouse" disabled={isEditMode} />
                         </FormControl>
                         <Label htmlFor="inHouse" className="font-normal">In-House Employee</Label>
                       </FormItem>
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
-                          <RadioGroupItem value="subcontractor" id="subcontractor" />
+                          <RadioGroupItem value="subcontractor" id="subcontractor" disabled={isEditMode} />
                         </FormControl>
                         <Label htmlFor="subcontractor" className="font-normal">Subcontractor</Label>
                       </FormItem>
@@ -193,8 +218,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
                     <FormLabel>DNR Capacity</FormLabel>
                     <Select 
                         onValueChange={field.onChange} 
-                        // Ensure defaultValue is correctly typed; it comes from dnrCapacities
-                        defaultValue={field.value as DnrCapacity | undefined}
+                        value={field.value || "none"} // Ensure value is one of the enum
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -202,7 +226,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {dnrCapacities.map((capacity) => ( // dnrCapacities includes "both"
+                        {dnrCapacities.map((capacity) => (
                           <SelectItem key={capacity} value={capacity}>
                             {capacity === "both" ? "Both 300dnr & 600dnr" : capacity.toUpperCase()}
                           </SelectItem>
@@ -220,7 +244,7 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave }: AddEmployeeDia
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">Save Personnel</Button>
+              <Button type="submit">{isEditMode ? "Save Changes" : "Save Personnel"}</Button>
             </DialogFooter>
           </form>
         </Form>

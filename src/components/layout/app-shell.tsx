@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
+// import Link from "next/link"; // Link is now handled within SidebarNav
 import {
   SidebarProvider,
   Sidebar,
@@ -12,11 +13,11 @@ import {
   SidebarInset,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button"; // Button usage in footer removed
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/icons/logo";
 import { SidebarNav } from "./sidebar-nav";
-import { Settings, UserCircle } from "lucide-react";
+// import { Settings, UserCircle } from "lucide-react"; // Icons are now part of SidebarNav
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -41,21 +42,13 @@ function ShellContent({ children }: { children: ReactNode }) {
             </div>
         </SidebarHeader>
         <Separator className="mb-2 group-data-[collapsible=icon]:hidden" />
-        <SidebarContent>
+        <SidebarContent className="flex flex-col"> {/* Added flex flex-col */}
           <SidebarNav />
         </SidebarContent>
-        <Separator className="mt-auto group-data-[collapsible=icon]:hidden" />
-        <SidebarFooter className="p-2">
-           {/* Placeholder for user profile/settings */}
-            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center">
-              <UserCircle className="h-5 w-5" />
-              <span className="ml-2 group-data-[collapsible=icon]:hidden">Profile</span>
-            </Button>
-            <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center">
-              <Settings className="h-5 w-5" />
-              <span className="ml-2 group-data-[collapsible=icon]:hidden">Settings</span>
-            </Button>
-        </SidebarFooter>
+        {/* Footer content is now integrated into SidebarNav as secondary items */}
+        {/* <Separator className="mt-auto group-data-[collapsible=icon]:hidden" /> */}
+        {/* <SidebarFooter className="p-2">
+        </SidebarFooter> */}
       </Sidebar>
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
