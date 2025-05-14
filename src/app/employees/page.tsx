@@ -19,12 +19,15 @@ import type { InHouseEmployee, Subcontractor, DnrCapacity } from "@/lib/definiti
 import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddEmployeeDialog } from "@/components/employees/add-employee-dialog";
+import { PersonnelDetailDialog } from "@/components/employees/PersonnelDetailDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function EmployeesPage() {
   const [inHouseEmployees, setInHouseEmployees] = useState<InHouseEmployee[]>([]);
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedPersonnel, setSelectedPersonnel] = useState<InHouseEmployee | Subcontractor | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,56 +35,62 @@ export default function EmployeesPage() {
     setSubcontractors(placeholderSubcontractors);
   }, []);
 
-  const generateId = (prefix: string, timestamp: number) => `${prefix}-${timestamp}`;
+  const handleRowClick = (person: InHouseEmployee | Subcontractor) => {
+    setSelectedPersonnel(person);
+    setIsDetailDialogOpen(true);
+  };
 
   const handleSaveEmployee = (personData: Omit<InHouseEmployee, "id"> | (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity })) => {
-    const timestamp = Date.now();
-
-    if ('dnrCapacity' in personData) { // It's a Subcontractor (form data)
+    if ('dnrCapacity' in personData) { // It's a Subcontractor
       const subcontractorData = personData as (Omit<Subcontractor, "id" | "dnrCapacity"> & { dnrCapacity: DnrCapacity });
       
+      const addSub = (capacity: "300dnr" | "600dnr" | "none") => {
+        let newId: string;
+        if (capacity === '300dnr') {
+          const maxId = Math.max(0, ...subcontractors.filter(s => s.id.startsWith('3') && !s.id.startsWith('S')).map(s => parseInt(s.id) || 0));
+          newId = `${maxId === 0 ? 301 : maxId + 1}`;
+        } else if (capacity === '600dnr') {
+          const maxId = Math.max(0, ...subcontractors.filter(s => s.id.startsWith('6') && !s.id.startsWith('S')).map(s => parseInt(s.id) || 0));
+          newId = `${maxId === 0 ? 601 : maxId + 1}`;
+        } else { // 'none'
+          const maxId = Math.max(0, ...subcontractors.filter(s => s.id.startsWith('S')).map(s => parseInt(s.id.substring(1)) || 0));
+          newId = `S${maxId === 0 ? 101 : maxId + 1}`;
+        }
+        
+        const newSub: Subcontractor = {
+          ...subcontractorData,
+          id: newId,
+          dnrCapacity: capacity,
+        };
+        setSubcontractors(prev => [newSub, ...prev]);
+        return newSub;
+      };
+
       if (subcontractorData.dnrCapacity === "both") {
-        const sub300: Subcontractor = {
-          ...subcontractorData,
-          id: generateId('3', timestamp),
-          dnrCapacity: '300dnr', 
-        };
-        const sub600: Subcontractor = {
-          ...subcontractorData,
-          id: generateId('6', timestamp + 1), // Ensure unique timestamp for key if added fast
-          dnrCapacity: '600dnr',
-        };
-        setSubcontractors(prev => [sub300, sub600, ...prev]);
+        const sub300 = addSub('300dnr');
+        const sub600 = addSub('600dnr');
         toast({
           title: "Subcontractor Added (Both Capacities)",
-          description: `${subcontractorData.name} has been added for both 300dnr and 600dnr capacities.`,
+          description: `${subcontractorData.name} added as ${sub300.id} (300dnr) and ${sub600.id} (600dnr).`,
         });
       } else {
-        let prefix = 'S'; // Default for 'none'
-        if (subcontractorData.dnrCapacity === '300dnr') prefix = '3';
-        if (subcontractorData.dnrCapacity === '600dnr') prefix = '6';
-        
-        const newSubcontractor: Subcontractor = {
-          ...subcontractorData,
-          id: generateId(prefix, timestamp),
-          // dnrCapacity is already '300dnr', '600dnr', or 'none' from the form
-          dnrCapacity: subcontractorData.dnrCapacity as "300dnr" | "600dnr" | "none",
-        };
-        setSubcontractors(prev => [newSubcontractor, ...prev]);
+        const newSub = addSub(subcontractorData.dnrCapacity as "300dnr" | "600dnr" | "none");
         toast({
           title: "Subcontractor Added",
-          description: `${newSubcontractor.name} has been added with ${newSubcontractor.dnrCapacity} capacity.`,
+          description: `${newSub.name} (${newSub.id}) has been added with ${newSub.dnrCapacity} capacity.`,
         });
       }
     } else { // It's an In-House Employee
+      const maxId = Math.max(0, ...inHouseEmployees.map(e => parseInt(e.id.replace('emp', '')) || 0));
+      const newEmployeeId = `emp${maxId === 0 ? 101 : maxId + 1}`;
       const newEmployee: InHouseEmployee = {
         ...personData,
-        id: generateId('emp', timestamp),
+        id: newEmployeeId,
       };
       setInHouseEmployees(prev => [newEmployee, ...prev]);
       toast({
         title: "In-House Employee Added",
-        description: `${newEmployee.name} has been added to the roster.`,
+        description: `${newEmployee.name} (${newEmployee.id}) has been added to the roster.`,
       });
     }
     setIsAddDialogOpen(false);
@@ -100,7 +109,6 @@ export default function EmployeesPage() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Work Type</TableHead>
                 <TableHead>Phone Number</TableHead>
                 {capacityFilter === "none" && <TableHead>DNR Capacity</TableHead>}
               </TableRow>
@@ -108,10 +116,9 @@ export default function EmployeesPage() {
             <TableBody>
               {filteredSubcontractors.length > 0 ? (
                 filteredSubcontractors.map((subcontractor) => (
-                  <TableRow key={subcontractor.id}>
+                  <TableRow key={subcontractor.id} onClick={() => handleRowClick(subcontractor)} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>{subcontractor.id}</TableCell>
                     <TableCell className="font-medium">{subcontractor.name}</TableCell>
-                    <TableCell>{subcontractor.workType}</TableCell>
                     <TableCell>{subcontractor.contact}</TableCell>
                     {capacityFilter === "none" && 
                       <TableCell>
@@ -124,7 +131,7 @@ export default function EmployeesPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={capacityFilter === "none" ? 5 : 4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={capacityFilter === "none" ? 4 : 3} className="text-center text-muted-foreground">
                     No subcontractors found for this capacity.
                   </TableCell>
                 </TableRow>
@@ -166,7 +173,7 @@ export default function EmployeesPage() {
             <TableBody>
               {inHouseEmployees.length > 0 ? (
                 inHouseEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
+                  <TableRow key={employee.id} onClick={() => handleRowClick(employee)} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>{employee.id}</TableCell>
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.workType}</TableCell>
@@ -193,6 +200,11 @@ export default function EmployeesPage() {
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
         onSave={handleSaveEmployee}
+      />
+      <PersonnelDetailDialog
+        person={selectedPersonnel}
+        open={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
       />
     </div>
   );
