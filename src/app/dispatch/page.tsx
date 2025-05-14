@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as z from "zod";
@@ -22,13 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { placeholderEmployees, placeholderDispatches } from "@/lib/placeholder-data";
+import { placeholderSubcontractors, placeholderDispatches } from "@/lib/placeholder-data"; // Updated import
+import type { Subcontractor } from "@/lib/definitions"; // Updated import for type safety
 import { materialTypes } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialDispatch } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { PlusCircle, Send } from "lucide-react";
-import type { Metadata } from 'next';
+import { Send } from "lucide-react"; // PlusCircle was unused
 
 // Cannot define metadata in client component, move to parent or generate separately
 // export const metadata: Metadata = {
@@ -46,11 +47,15 @@ type DispatchFormValues = z.infer<typeof dispatchFormSchema>;
 export default function DispatchPage() {
   const { toast } = useToast();
   const [dispatches, setDispatches] = useState<MaterialDispatch[]>([]);
-  const [subcontractors, setSubcontractors] = useState(placeholderEmployees.filter(e => e.type === "Subcontractor"));
+  // Use placeholderSubcontractors directly
+  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>(placeholderSubcontractors);
 
   useEffect(() => {
     // Simulate fetching data
     setDispatches(placeholderDispatches);
+    // If subcontractors could change, you might fetch them here too.
+    // For now, they are static from placeholder-data.
+    // setSubcontractorOptions(placeholderSubcontractors); // Already initialized
   }, []);
   
   const form = useForm<DispatchFormValues>({
@@ -66,7 +71,7 @@ export default function DispatchPage() {
     const newDispatch: MaterialDispatch = {
       id: `disp${dispatches.length + 1}`,
       subcontractorId: data.subcontractorId,
-      subcontractorName: subcontractors.find(s => s.id === data.subcontractorId)?.name,
+      subcontractorName: subcontractorOptions.find(s => s.id === data.subcontractorId)?.name,
       materialType: data.materialType,
       quantity: data.quantity,
       dispatchDate: new Date().toISOString(),
@@ -107,7 +112,7 @@ export default function DispatchPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {subcontractors.map((sub) => (
+                          {subcontractorOptions.map((sub) => (
                             <SelectItem key={sub.id} value={sub.id}>
                               {sub.name}
                             </SelectItem>

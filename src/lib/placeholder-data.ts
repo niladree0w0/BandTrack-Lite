@@ -1,11 +1,15 @@
-import type { Employee, MaterialDispatch, MaterialReturn } from "./definitions";
 
-export const placeholderEmployees: Employee[] = [
-  { id: "1", name: "Alice Wonderland", type: "Subcontractor", workType: "Sewing", contact: "alice@example.com" },
-  { id: "2", name: "Bob The Builder", type: "In-House", workType: "Cutting", contact: "bob@example.com" },
-  { id: "3", name: "Charlie Chaplin", type: "Subcontractor", workType: "Embroidery", contact: "charlie@example.com" },
-  { id: "4", name: "Diana Prince", type: "In-House", workType: "Quality Check", contact: "diana@example.com" },
-  { id: "5", name: "Edward Scissorhands", type: "Subcontractor", workType: "Pattern Making", contact: "edward@example.com" },
+import type { InHouseEmployee, Subcontractor, MaterialDispatch, MaterialReturn, DnrCapacity } from "./definitions";
+
+export const placeholderInHouseEmployees: InHouseEmployee[] = [
+  { id: "2", name: "Bob The Builder", workType: "Cutting", contact: "bob@example.com" },
+  { id: "4", name: "Diana Prince", workType: "Quality Check", contact: "diana@example.com" },
+];
+
+export const placeholderSubcontractors: Subcontractor[] = [
+  { id: "1", name: "Alice Wonderland", workType: "Sewing", contact: "alice@example.com", dnrCapacity: "600dnr" },
+  { id: "3", name: "Charlie Chaplin", workType: "Embroidery", contact: "charlie@example.com", dnrCapacity: "300dnr" },
+  { id: "5", name: "Edward Scissorhands", workType: "Pattern Making", contact: "edward@example.com", dnrCapacity: "both" },
 ];
 
 export const placeholderDispatches: MaterialDispatch[] = [

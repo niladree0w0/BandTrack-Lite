@@ -1,9 +1,19 @@
-export type Employee = {
+
+export const dnrCapacities = ["300dnr", "600dnr", "both", "none"] as const;
+export type DnrCapacity = typeof dnrCapacities[number];
+
+// Base employee type for common fields
+export type BaseEmployee = {
   id: string;
   name: string;
-  type: "Subcontractor" | "In-House";
   workType: string;
   contact: string;
+};
+
+export type InHouseEmployee = BaseEmployee;
+
+export type Subcontractor = BaseEmployee & {
+  dnrCapacity: DnrCapacity;
 };
 
 export type MaterialDispatch = {
@@ -33,4 +43,3 @@ export type MetricCardProps = {
 
 export const materialTypes = ["Fabric A", "Fabric B", "Threads", "Buttons", "Zippers"];
 export const qualityStatuses = ["Good", "Damaged", "Needs Rework"] as const;
-

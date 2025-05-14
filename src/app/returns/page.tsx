@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as z from "zod";
@@ -22,13 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { placeholderEmployees, placeholderReturns } from "@/lib/placeholder-data";
+import { placeholderSubcontractors, placeholderReturns } from "@/lib/placeholder-data"; // Updated import
+import type { Subcontractor } from "@/lib/definitions"; // Updated import for type safety
 import { qualityStatuses } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialReturn } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { ArchiveRestore, Save } from "lucide-react";
-import type { Metadata } from 'next';
+import { Save } from "lucide-react"; // ArchiveRestore was unused
 
 // Cannot define metadata in client component
 // export const metadata: Metadata = {
@@ -48,11 +49,15 @@ type ReturnFormValues = z.infer<typeof returnFormSchema>;
 export default function ReturnsPage() {
   const { toast } = useToast();
   const [returns, setReturns] = useState<MaterialReturn[]>([]);
-  const [subcontractors, setSubcontractors] = useState(placeholderEmployees.filter(e => e.type === "Subcontractor"));
+  // Use placeholderSubcontractors directly
+  const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>(placeholderSubcontractors);
 
   useEffect(() => {
     // Simulate fetching data
     setReturns(placeholderReturns);
+    // If subcontractors could change, you might fetch them here too.
+    // For now, they are static from placeholder-data.
+    // setSubcontractorOptions(placeholderSubcontractors); // Already initialized
   }, []);
 
   const form = useForm<ReturnFormValues>({
@@ -67,7 +72,7 @@ export default function ReturnsPage() {
     const newReturn: MaterialReturn = {
       id: `ret${returns.length + 1}`,
       subcontractorId: data.subcontractorId,
-      subcontractorName: subcontractors.find(s => s.id === data.subcontractorId)?.name,
+      subcontractorName: subcontractorOptions.find(s => s.id === data.subcontractorId)?.name,
       quantity: data.quantity,
       qualityStatus: data.qualityStatus,
       returnDate: new Date().toISOString(),
@@ -109,7 +114,7 @@ export default function ReturnsPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {subcontractors.map((sub) => (
+                          {subcontractorOptions.map((sub) => (
                             <SelectItem key={sub.id} value={sub.id}>
                               {sub.name}
                             </SelectItem>
