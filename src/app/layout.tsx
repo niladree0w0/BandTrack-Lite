@@ -29,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body 
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`} 
+        suppressHydrationWarning // Added to address extension-induced mismatches
+      >
         <AppShell>
           {children}
         </AppShell>
