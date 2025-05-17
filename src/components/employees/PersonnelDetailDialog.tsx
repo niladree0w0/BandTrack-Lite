@@ -34,28 +34,28 @@ export function PersonnelDetailDialog({ person, open, onOpenChange }: PersonnelD
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-center gap-x-4 gap-y-2">
             <p className="text-sm font-medium text-muted-foreground">ID:</p>
             <p className="text-sm">{person.id}</p>
           </div>
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-center gap-x-4 gap-y-2">
             <p className="text-sm font-medium text-muted-foreground">Name:</p>
             <p className="text-sm">{person.name}</p>
           </div>
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-center gap-x-4 gap-y-2">
             <p className="text-sm font-medium text-muted-foreground">Work Type:</p>
             <p className="text-sm">{person.workType}</p>
           </div>
-          <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-center gap-x-4 gap-y-2">
             <p className="text-sm font-medium text-muted-foreground">Phone Number:</p>
             <p className="text-sm">{person.contact}</p>
           </div>
           {isSubcontractor && (
-            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] items-center gap-x-4 gap-y-2">
               <p className="text-sm font-medium text-muted-foreground">DNR Capacity:</p>
               <p className="text-sm">
-                <Badge variant={person.dnrCapacity === "none" ? "outline" : "secondary"}>
-                  {person.dnrCapacity.toUpperCase()}
+                <Badge variant={(person as Subcontractor).dnrCapacity === "none" ? "outline" : "secondary"}>
+                  {(person as Subcontractor).dnrCapacity.toUpperCase()}
                 </Badge>
               </p>
             </div>
