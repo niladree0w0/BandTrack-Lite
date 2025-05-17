@@ -46,3 +46,13 @@ export type MetricCardProps = {
 
 export const materialTypes = ["Fabric A", "Fabric B", "Threads", "Buttons", "Zippers"];
 export const qualityStatuses = ["Good", "Damaged", "Needs Rework"] as const;
+
+// User Authentication
+export const userRoles = ["admin", "manager", "proprietor"] as const;
+export type UserRole = typeof userRoles[number];
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+}
