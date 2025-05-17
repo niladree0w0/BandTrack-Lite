@@ -89,7 +89,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                disabled={isLoggingin}
+                disabled={isLoggingIn}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -105,3 +105,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
