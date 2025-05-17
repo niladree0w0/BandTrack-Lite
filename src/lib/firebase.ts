@@ -3,8 +3,12 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, browserLocalPersistence, indexedDBLocalPersistence, browserSessionPersistence } from "firebase/auth";
 import { getAnalytics, type Analytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore"; // Added Firestore
 
-// Your web app's Firebase configuration (Hardcoded as per user request)
+// Your web app's Firebase configuration (Hardcoded as per user request from previous step)
+// IMPORTANT: This configuration was hardcoded based on a previous request.
+// For better practice, especially if deploying or sharing, consider moving sensitive
+// parts back to environment variables (.env.local).
 const firebaseConfig = {
   apiKey: "AIzaSyAgXONsmCvlu4QVej9S0Ja2_RiazF94Urw",
   authDomain: "bandtrack-lite.firebaseapp.com",
@@ -22,27 +26,24 @@ let analytics: Analytics | undefined;
 if (!getApps().length) {
   try {
     app = initializeApp(firebaseConfig);
-    // Check if window is defined (i.e., we are on the client side) before initializing analytics
     if (typeof window !== 'undefined') {
       analytics = getAnalytics(app);
     }
   } catch (error) {
     console.error("Firebase initializeApp error:", error);
-    // Prevent further errors if initialization fails critically
     throw new Error("Could not initialize Firebase. Please check your configuration. Error: " + (error as Error).message);
   }
 } else {
   app = getApps()[0];
-  if (typeof window !== 'undefined' && !analytics) { // Initialize analytics if app was already initialized
+  if (typeof window !== 'undefined' && !analytics) {
     analytics = getAnalytics(app);
   }
 }
 
 const auth = getAuth(app);
+const db = getFirestore(app); // Initialized Firestore
 
-// Attempt to set persistence. Start with indexedDB, fall back to local, then session.
-// This helps ensure session persistence across browser sessions.
-if (typeof window !== 'undefined') { // Persistence settings are client-side only
+if (typeof window !== 'undefined') {
   auth.setPersistence(indexedDBLocalPersistence)
     .catch((error) => {
       console.warn("Firebase: Could not set indexedDB persistence. Trying localStorage.", (error as Error).message);
@@ -57,5 +58,4 @@ if (typeof window !== 'undefined') { // Persistence settings are client-side onl
     });
 }
 
-
-export { app, auth, analytics };
+export { app, auth, analytics, db }; // Export db

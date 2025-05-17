@@ -4,10 +4,10 @@ export type DnrCapacity = typeof dnrCapacities[number];
 
 // Base employee type for common fields
 export type BaseEmployee = {
-  id: string; // For in-house, this can be custom. For subcontractors, this might align with a DB ID.
+  id: string; 
   name: string;
-  workType: string; // Specialization or type of work
-  contact: string; // Represents a phone number
+  workType: string; 
+  contact: string; 
 };
 
 export type InHouseEmployee = BaseEmployee;
@@ -48,8 +48,25 @@ export const qualityStatuses = ["Good", "Damaged", "Needs Rework"] as const;
 export const userRoles = ["admin", "manager", "proprietor"] as const;
 export type UserRole = typeof userRoles[number];
 
+// Define more granular permissions as your app grows.
+// This list should align with the strings you'll use in Firestore 'roles' collection.
+export const permissionsList = [
+  'viewDashboard',
+  'manageDispatch',
+  'manageReturns',
+  'viewEmployees',
+  'manageEmployees', 
+  'viewProfile',
+  'manageSettings',
+  'managePermissions', // For future admin UI to edit roles' permissions
+  'fullAccess' // Special permission for Admin
+] as const;
+export type Permission = typeof permissionsList[number];
+
+
 export interface User {
-  id: string; // Will be Firebase UID
-  username: string; // Could be email or display name from Firebase
-  role: UserRole; // This will need to be managed outside Firebase Auth (e.g., Firestore)
+  id: string; // Firebase UID
+  username: string; // Email or display name from Firebase
+  role: UserRole; 
+  permissions: Permission[]; // NEW: List of allowed permissions for this user based on their role
 }

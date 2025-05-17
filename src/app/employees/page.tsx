@@ -23,10 +23,10 @@ import { PersonnelDetailDialog } from "@/components/employees/PersonnelDetailDia
 import { DeleteConfirmationDialog } from "@/components/employees/delete-confirmation-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
-import { hasPermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions"; // Updated import
 
 export default function EmployeesPage() {
-  const { user } = useAuth();
+  const { user } = useAuth(); // useAuth now provides user with permissions
   const [inHouseEmployees, setInHouseEmployees] = useState<InHouseEmployee[]>([]);
   const [subcontractors, setSubcontractors] = useState<Subcontractor[]>([]);
   
@@ -41,7 +41,8 @@ export default function EmployeesPage() {
   
   const { toast } = useToast();
 
-  const canManage = user && hasPermission(user.role, 'manageEmployees');
+  const canView = user && hasPermission(user, 'viewEmployees');
+  const canManage = user && hasPermission(user, 'manageEmployees');
 
   useEffect(() => {
     setInHouseEmployees(placeholderInHouseEmployees);
@@ -60,7 +61,7 @@ export default function EmployeesPage() {
   };
 
   const handleEditClick = (e: React.MouseEvent, person: InHouseEmployee | Subcontractor) => {
-    e.stopPropagation(); // Prevent row click from triggering detail view
+    e.stopPropagation(); 
     if (!canManage) return;
     const personType = 'dnrCapacity' in person ? 'subcontractor' : 'inHouse';
     setEditingPersonnel({
@@ -75,7 +76,7 @@ export default function EmployeesPage() {
   };
 
   const handleDeleteClick = (e: React.MouseEvent, person: InHouseEmployee | Subcontractor) => {
-    e.stopPropagation(); // Prevent row click from triggering detail view
+    e.stopPropagation(); 
     if (!canManage) return;
     setPersonToDelete(person);
     setIsConfirmDeleteDialogOpen(true);
@@ -111,11 +112,11 @@ export default function EmployeesPage() {
     if (capacity === '300dnr') {
       prefix = '';
       numericPartBase = 300;
-      filterFn = s => s.id.startsWith('3') && !s.id.startsWith('S') && parseInt(s.id, 10) >= 300 && parseInt(s.id, 10) < 400;
+      filterFn = s => /^\d+$/.test(s.id) && parseInt(s.id, 10) >= 300 && parseInt(s.id, 10) < 400;
     } else if (capacity === '600dnr') {
       prefix = '';
       numericPartBase = 600;
-      filterFn = s => s.id.startsWith('6') && !s.id.startsWith('S') && parseInt(s.id, 10) >= 600 && parseInt(s.id, 10) < 700;
+      filterFn = s => /^\d+$/.test(s.id) && parseInt(s.id, 10) >= 600 && parseInt(s.id, 10) < 700;
     } else { 
       prefix = 'S';
       numericPartBase = 100;
@@ -159,48 +160,42 @@ export default function EmployeesPage() {
             setSubcontractors(prev => {
                 let subs = prev.filter(s => s.id !== formData.id && !(s.name === originalSub.name && s.contact === originalSub.contact && (s.dnrCapacity === '300dnr' || s.dnrCapacity === '600dnr')));
                 
-                const sub300Id = (originalSub.dnrCapacity === '300dnr' || (originalSub.dnrCapacity === '600dnr' && originalSub.id.startsWith('3'))) ? formData.id! : generateNewSubId('300dnr', subs);
-                const sub600Id = (originalSub.dnrCapacity === '600dnr' || (originalSub.dnrCapacity === '300dnr' && originalSub.id.startsWith('6'))) ? formData.id! : generateNewSubId('600dnr', subs);
+                const sub300Id = (originalSub.dnrCapacity === '300dnr' || (originalSub.dnrCapacity === '600dnr' && (originalSub.id.startsWith('3') || /^\d+$/.test(originalSub.id) && parseInt(originalSub.id, 10) >= 300 && parseInt(originalSub.id, 10) < 400 ) )) ? formData.id! : generateNewSubId('300dnr', subs);
+                const sub600Id = (originalSub.dnrCapacity === '600dnr' || (originalSub.dnrCapacity === '300dnr' && (originalSub.id.startsWith('6') || /^\d+$/.test(originalSub.id) && parseInt(originalSub.id, 10) >= 600 && parseInt(originalSub.id, 10) < 700 ) )) ? formData.id! : generateNewSubId('600dnr', subs);
                 
                 const newSub300: Subcontractor = { ...subcontractorBaseData, id: sub300Id, dnrCapacity: '300dnr' };
                 const newSub600: Subcontractor = { ...subcontractorBaseData, id: sub600Id, dnrCapacity: '600dnr' };
                 
-                // Ensure we don't add a sub if one with the same ID already exists from the filtering
                 if (!subs.find(s => s.id === newSub300.id)) subs.push(newSub300);
                 else subs = subs.map(s => s.id === newSub300.id ? newSub300 : s);
 
                 if (!subs.find(s => s.id === newSub600.id)) subs.push(newSub600);
                 else subs = subs.map(s => s.id === newSub600.id ? newSub600 : s);
                 
-                return subs;
+                return subs.sort((a,b) => a.id.localeCompare(b.id));
             });
             toast({ title: "Subcontractor Updated (Both Capacities)", description: `${formData.name} updated to handle both 300dnr & 600dnr.` });
 
         } else { 
+            const is300Id = (id: string) => /^\d+$/.test(id) && parseInt(id,10) >= 300 && parseInt(id,10) < 400;
+            const is600Id = (id: string) => /^\d+$/.test(id) && parseInt(id,10) >= 600 && parseInt(id,10) < 700;
+            const isSId = (id: string) => id.startsWith('S');
+
             const requiresNewId = 
-                (newCapacity === '300dnr' && (!formData.id.startsWith('3') || originalSub.dnrCapacity === '600dnr')) ||
-                (newCapacity === '600dnr' && (!formData.id.startsWith('6') || originalSub.dnrCapacity === '300dnr')) ||
-                (newCapacity === 'none' && !formData.id.startsWith('S'));
+                (newCapacity === '300dnr' && !is300Id(formData.id!)) ||
+                (newCapacity === '600dnr' && !is600Id(formData.id!)) ||
+                (newCapacity === 'none' && !isSId(formData.id!));
 
             if (requiresNewId) {
                 const newId = generateNewSubId(newCapacity, subcontractors.filter(s => s.id !== formData.id));
                 setSubcontractors(prev => [
                     ...prev.filter(s => s.id !== formData.id),
                     { ...subcontractorBaseData, id: newId, dnrCapacity: newCapacity }
-                ]);
+                ].sort((a,b) => a.id.localeCompare(b.id)));
                 toast({ title: "Subcontractor Updated", description: `${formData.name} (${newId}) updated to ${newCapacity}. Old ID ${formData.id} removed.` });
             } else {
-                setSubcontractors(prev => prev.map(s => s.id === formData.id ? { ...s, ...subcontractorBaseData, dnrCapacity: newCapacity } : s));
+                setSubcontractors(prev => prev.map(s => s.id === formData.id ? { ...s, ...subcontractorBaseData, dnrCapacity: newCapacity } : s).sort((a,b) => a.id.localeCompare(b.id)));
                 toast({ title: "Subcontractor Updated", description: `${formData.name} (${formData.id}) details updated.` });
-            }
-             // If original was 'both', and now it's specific, we might need to remove the other one
-            if (originalSub.dnrCapacity === 'both') {
-                 // This case needs more complex logic if 'both' was represented by two entries.
-                 // The current placeholder data splits 'both' into two separate entries from the start.
-                 // If an entry that was part of a 'both' pair is edited to a specific capacity,
-                 // the other 'paired' entry should ideally be removed.
-                 // This logic can get very complex with placeholder data.
-                 // For now, editing one part of a "both" pair will only affect that one entry.
             }
         }
 
@@ -208,7 +203,7 @@ export default function EmployeesPage() {
         const addSub = (capacity: "300dnr" | "600dnr" | "none") => {
           const newId = generateNewSubId(capacity, subcontractors);
           const newSub: Subcontractor = { ...subcontractorBaseData, id: newId, dnrCapacity: capacity };
-          setSubcontractors(prev => [newSub, ...prev]);
+          setSubcontractors(prev => [newSub, ...prev].sort((a,b) => a.id.localeCompare(b.id)));
           return newSub;
         };
 
@@ -227,6 +222,14 @@ export default function EmployeesPage() {
   
   const renderSubcontractorTable = (title: string, capacityFilter: "300dnr" | "600dnr" | "none") => {
     const filteredSubcontractors = subcontractors.filter(s => s.dnrCapacity === capacityFilter);
+    const colCount = canManage ? 4 : 3; // Adjusted based on presence of 'Actions' column
+    if (capacityFilter === "none" && canManage) { // No DNR Capacity column if already filtered by 'none'
+        // colCount = canManage ? 4 : 3;
+    } else if (capacityFilter === "none" && !canManage) {
+        // colCount = 3;
+    }
+
+
     return (
       <Card className="shadow-md">
         <CardHeader>
@@ -239,6 +242,7 @@ export default function EmployeesPage() {
                 <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Phone Number</TableHead>
+                {/* DNR Capacity column is only shown for "No Specific DNR Capacity" table or if needed */}
                 {capacityFilter === "none" && <TableHead>DNR Capacity</TableHead>}
                 {canManage && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
@@ -273,7 +277,10 @@ export default function EmployeesPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={canManage ? (capacityFilter === "none" ? 5 : 4) : (capacityFilter === "none" ? 4 : 3)} className="text-center text-muted-foreground">
+                  <TableCell 
+                    colSpan={capacityFilter === "none" ? (canManage ? 5 : 4) : (canManage ? 4 : 3) } 
+                    className="text-center text-muted-foreground"
+                  >
                     No subcontractors found for this capacity.
                   </TableCell>
                 </TableRow>
@@ -285,7 +292,7 @@ export default function EmployeesPage() {
     );
   }
 
-  if (!user || !hasPermission(user.role, 'viewEmployees')) {
+  if (!canView) { // Check for 'viewEmployees' permission
      return (
         <div className="flex flex-col gap-8">
             <PageHeader
@@ -301,14 +308,13 @@ export default function EmployeesPage() {
      );
   }
 
-
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Employee & Subcontractor Roster"
         description="Manage in-house employees and subcontractors by DNR capacity."
         actions={
-          canManage ? (
+          canManage ? ( // Check for 'manageEmployees' permission for Add button
             <Button onClick={handleAddNewClick}>
               <UserPlus className="mr-2 h-4 w-4" />
               Add New Personnel
