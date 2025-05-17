@@ -49,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (adminRoleDocSnap.exists() && adminRoleDocSnap.data()?.permissions) {
               resolvedPermissions = adminRoleDocSnap.data().permissions as Permission[];
               if (!resolvedPermissions.includes('fullAccess')) {
-                resolvedPermissions.push('fullAccess');
+                // Ensure admin always has fullAccess if their Firestore doc is incomplete
+                resolvedPermissions.push('fullAccess'); 
               }
             } else {
               console.warn("Admin role document ('roles/admin') not found or has no permissions in Firestore. Defaulting to ['fullAccess'].");
@@ -67,11 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (roleDocSnap.exists() && roleDocSnap.data()?.permissions) {
                 resolvedPermissions = roleDocSnap.data().permissions as Permission[];
               } else {
-                console.warn(`Permissions for role '${resolvedRole}' not found in 'roles/${resolvedRole}'. User will have no specific permissions.`);
+                console.warn(`Permissions for role '${resolvedRole}' not found in 'roles/${resolvedRole}' Firestore document. User will have no specific permissions.`);
                 resolvedPermissions = []; 
               }
             } else {
-              console.warn(`User document for UID ${fbUser.uid} or role field not found in Firestore. Assigning default role '${resolvedRole}'.`);
+              console.warn(`User document for UID ${fbUser.uid} or its 'role' field not found in Firestore. Assigning default role '${resolvedRole}'. Attempting to load default role permissions.`);
               const defaultRoleDocRef = doc(db, "roles", resolvedRole); 
               const defaultRoleDocSnap = await getDoc(defaultRoleDocRef);
               if (defaultRoleDocSnap.exists() && defaultRoleDocSnap.data()?.permissions) {
@@ -84,20 +85,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
             console.error("Error fetching user role/permissions from Firestore:", error);
+            // Fallback in case of Firestore error during permission fetching
             if (fbUser.email === ADMIN_EMAIL) {
                 resolvedRole = 'admin';
                 resolvedPermissions = ['fullAccess'];
             } else {
+                // For other users, if Firestore fails, they get no permissions.
+                // Consider if a different fallback is more appropriate for your app.
                 resolvedPermissions = []; 
             }
         }
 
         const appUser: User = {
           id: fbUser.uid,
-          username: fbUser.email || "User",
+          username: fbUser.email || "User", // Use email as username
           role: resolvedRole,
           permissions: resolvedPermissions,
         };
+        // --- IMPORTANT FOR DEBUGGING PERMISSIONS ---
+        // Check your browser's developer console for this log message.
+        // It shows the role and permissions the app has determined for the logged-in user.
         console.log(`[AuthContext] User Authenticated: ${appUser.username}, Role: ${appUser.role}, Permissions: ${JSON.stringify(appUser.permissions)}`);
         setUser(appUser);
 
@@ -116,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, emailInput, passwordInput);
+      // onAuthStateChanged will handle setting user state and initial redirect
       router.push("/dashboard"); 
       return true;
     } catch (error) {
@@ -131,11 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signOut(auth);
       setUser(null); 
       setFirebaseUser(null);
-      router.push("/login");
+      router.push("/login"); // Explicitly redirect to login on logout
     } catch (error) {
       console.error("Firebase Logout Error:", error);
     }
-    setIsLoading(false); 
+    // Setting loading to false moved to onAuthStateChanged to ensure user state is cleared first
+    // setIsLoading(false); 
   };
 
   return (
