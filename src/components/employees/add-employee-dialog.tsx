@@ -86,21 +86,22 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave, initialData }: A
   
   React.useEffect(() => {
     if (open) {
-      const defaultDnrCapacity = initialData?.personType === "subcontractor" 
-        ? (initialData.dnrCapacity || "none") 
-        : undefined;
+      const defaultPersonType = initialData?.personType || "inHouse";
+      const defaultDnrCapacity = (initialData?.personType === "subcontractor" && initialData.dnrCapacity)
+        ? initialData.dnrCapacity
+        : (defaultPersonType === "subcontractor" ? "none" : undefined);
 
       form.reset({
         id: initialData?.id || undefined,
         name: initialData?.name || "",
         workType: initialData?.workType || "",
         contact: initialData?.contact || "",
-        personType: initialData?.personType || "inHouse",
-        dnrCapacity: personType === "subcontractor" ? (initialData?.dnrCapacity || "none") : undefined,
+        personType: defaultPersonType,
+        dnrCapacity: defaultDnrCapacity,
       });
-      setPersonType(initialData?.personType || "inHouse");
+      setPersonType(defaultPersonType);
     }
-  }, [open, initialData, form, personType]);
+  }, [open, initialData, form.reset, setPersonType]); // Using form.reset and setPersonType as stable refs
 
   React.useEffect(() => {
     // Update dnrCapacity in form when personType changes
@@ -120,7 +121,15 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave, initialData }: A
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) {
-        form.reset({ name: "", workType: "", contact: "", personType: "inHouse", dnrCapacity: undefined });
+        // Reset form and local state when dialog is closed without saving
+        form.reset({ 
+            id: undefined, 
+            name: "", 
+            workType: "", 
+            contact: "", 
+            personType: "inHouse", 
+            dnrCapacity: undefined 
+        });
         setPersonType("inHouse");
       }
       onOpenChange(isOpen);
@@ -148,17 +157,17 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave, initialData }: A
                       }}
                       value={field.value}
                       className="flex space-x-4"
-                      disabled={isEditMode} // Cannot change type during edit
+                      disabled={isEditMode} // This disables the group if in edit mode
                     >
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
-                          <RadioGroupItem value="inHouse" id="inHouse" disabled={isEditMode} />
+                          <RadioGroupItem value="inHouse" id="inHouse" />
                         </FormControl>
                         <Label htmlFor="inHouse" className="font-normal">In-House Employee</Label>
                       </FormItem>
                       <FormItem className="flex items-center space-x-2">
                         <FormControl>
-                          <RadioGroupItem value="subcontractor" id="subcontractor" disabled={isEditMode} />
+                          <RadioGroupItem value="subcontractor" id="subcontractor" />
                         </FormControl>
                         <Label htmlFor="subcontractor" className="font-normal">Subcontractor</Label>
                       </FormItem>
@@ -252,3 +261,4 @@ export function AddEmployeeDialog({ open, onOpenChange, onSave, initialData }: A
     </Dialog>
   );
 }
+ 
