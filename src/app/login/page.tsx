@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,13 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Redirect if already logged in and not loading
+    if (!authIsLoading && user) {
+      router.replace("/dashboard");
+    }
+  }, [user, authIsLoading, router]);
+
   if (authIsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -28,8 +35,9 @@ export default function LoginPage() {
     );
   }
 
+  // If user is already defined (and not loading), and useEffect hasn't redirected yet,
+  // returning null avoids rendering the login form momentarily before redirect.
   if (user) {
-    router.replace("/dashboard"); // Redirect if already logged in
     return null;
   }
 
@@ -46,6 +54,7 @@ export default function LoginPage() {
         variant: "destructive",
       });
     }
+    // No need to manually redirect here, AuthContext and useEffect handle it
     setIsLoggingIn(false);
   };
 
@@ -80,7 +89,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                disabled={isLoggingIn}
+                disabled={isLoggingin}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
