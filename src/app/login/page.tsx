@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); // Changed from username to email
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -27,7 +27,7 @@ export default function LoginPage() {
     }
   }, [user, authIsLoading, router]);
 
-  if (authIsLoading) {
+  if (authIsLoading && !user) { // Show loading only if not already logged in
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p>Loading...</p>
@@ -45,16 +45,16 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setIsLoggingIn(true);
-    const success = await login(username, password);
+    const success = await login(email, password); // Pass email to login
     if (!success) {
-      setError("Invalid username or password.");
+      setError("Invalid email or password.");
       toast({
         title: "Login Failed",
-        description: "Invalid username or password.",
+        description: "Invalid email or password. Please check your credentials or ensure the user exists in Firebase.",
         variant: "destructive",
       });
     }
-    // No need to manually redirect here, AuthContext and useEffect handle it
+    // onAuthStateChanged in AuthContext will handle successful redirect
     setIsLoggingIn(false);
   };
 
@@ -69,13 +69,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label> 
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                id="email"
+                type="email" // Changed to email
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@example.com" // Updated placeholder
                 required
                 disabled={isLoggingIn}
               />
@@ -99,10 +99,9 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="text-center text-xs text-muted-foreground">
-            <p>Use provided credentials to access the system.</p>
+            <p>Use your registered email and password.</p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-

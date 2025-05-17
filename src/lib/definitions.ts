@@ -4,25 +4,22 @@ export type DnrCapacity = typeof dnrCapacities[number];
 
 // Base employee type for common fields
 export type BaseEmployee = {
-  id: string;
+  id: string; // For in-house, this can be custom. For subcontractors, this might align with a DB ID.
   name: string;
-  workType: string;
+  workType: string; // Specialization or type of work
   contact: string; // Represents a phone number
 };
 
 export type InHouseEmployee = BaseEmployee;
 
-// Note: A subcontractor with "both" dnrCapacity selected in the form
-// will be stored as two separate entries: one with dnrCapacity="300dnr" and one with dnrCapacity="600dnr".
-// The dnrCapacity field here reflects the effective capacity for that specific record.
 export type Subcontractor = BaseEmployee & {
-  dnrCapacity: "300dnr" | "600dnr" | "none"; // "both" is a form-only option that splits into 2 records
+  dnrCapacity: "300dnr" | "600dnr" | "none"; 
 };
 
 export type MaterialDispatch = {
   id: string;
   subcontractorId: string;
-  subcontractorName?: string; // Optional: for display convenience
+  subcontractorName?: string; 
   materialType: string;
   quantity: number;
   dispatchDate: string; // ISO date string
@@ -31,7 +28,7 @@ export type MaterialDispatch = {
 export type MaterialReturn = {
   id: string;
   subcontractorId: string;
-  subcontractorName?: string; // Optional: for display convenience
+  subcontractorName?: string; 
   quantity: number;
   qualityStatus: "Good" | "Damaged" | "Needs Rework";
   returnDate: string; // ISO date string
@@ -52,7 +49,7 @@ export const userRoles = ["admin", "manager", "proprietor"] as const;
 export type UserRole = typeof userRoles[number];
 
 export interface User {
-  id: string;
-  username: string;
-  role: UserRole;
+  id: string; // Will be Firebase UID
+  username: string; // Could be email or display name from Firebase
+  role: UserRole; // This will need to be managed outside Firebase Auth (e.g., Firestore)
 }

@@ -2,82 +2,100 @@
 "use client";
 
 import type { User, UserRole } from "@/lib/definitions";
+import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  signOut,
+  type User as FirebaseUser
+} from "firebase/auth";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 
 interface AuthContextType {
   user: User | null;
-  login: (usernameInput: string, passwordInput: string) => Promise<boolean>;
+  firebaseUser: FirebaseUser | null; // Expose Firebase user if needed for more details
+  login: (emailInput: string, passwordInput: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hardcoded credentials
-const usersCredentials = {
-  admin: { password: "admin123", role: "admin" as UserRole, id: "user_admin" },
-  proprietor: { password: "proprietor123", role: "proprietor" as UserRole, id: "user_proprietor" },
-  manager: { password: "manager123", role: "manager" as UserRole, id: "user_manager" },
-};
+// Predefined admin email from environment variable
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Check for saved user session on initial load (e.g., from localStorage)
-    try {
-      const savedUser = localStorage.getItem("currentUser");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-    } catch (error) {
-      console.error("Failed to load user from localStorage", error);
-      localStorage.removeItem("currentUser"); // Clear corrupted data
-    }
-    setIsLoading(false);
-  }, []);
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      setIsLoading(true);
+      if (fbUser) {
+        setFirebaseUser(fbUser);
+        // Map Firebase user to your app's User type
+        // Role assignment: For this example, if the email matches ADMIN_EMAIL, assign 'admin' role.
+        // Otherwise, assign 'manager' as a default.
+        // In a real app, roles would be fetched from a database (e.g., Firestore) using fbUser.uid.
+        let role: UserRole = 'manager'; // Default role
+        if (fbUser.email === ADMIN_EMAIL) {
+          role = 'admin';
+        }
+        // You might want to extend this logic for 'proprietor' or other roles
+        // based on email or by fetching from a database.
 
-  const login = async (usernameInput: string, passwordInput: string): Promise<boolean> => {
-    setIsLoading(true);
-    const usernameKey = usernameInput.toLowerCase() as keyof typeof usersCredentials;
-    const userCred = usersCredentials[usernameKey];
-
-    if (userCred && userCred.password === passwordInput) {
-      const loggedInUser: User = {
-        id: userCred.id,
-        username: usernameInput,
-        role: userCred.role,
-      };
-      setUser(loggedInUser);
-      try {
-        localStorage.setItem("currentUser", JSON.stringify(loggedInUser));
-      } catch (error) {
-         console.error("Failed to save user to localStorage", error);
+        const appUser: User = {
+          id: fbUser.uid, // Use Firebase UID as the user ID
+          username: fbUser.email || "User", // Use email as username, or a display name if available
+          role: role,
+        };
+        setUser(appUser);
+      } else {
+        setUser(null);
+        setFirebaseUser(null);
       }
       setIsLoading(false);
-      router.push("/dashboard");
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (emailInput: string, passwordInput: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, emailInput, passwordInput);
+      // onAuthStateChanged will handle setting the user state and redirecting
+      // No need to manually redirect here if onAuthStateChanged handles it.
+      // However, we can ensure redirection upon successful login.
+      router.push("/dashboard"); 
       return true;
+    } catch (error) {
+      console.error("Firebase Login Error:", error);
+      setIsLoading(false);
+      return false;
     }
-    setIsLoading(false);
-    return false;
+    // setIsLoading(false) will be handled by onAuthStateChanged
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    setIsLoading(true);
     try {
-      localStorage.removeItem("currentUser");
+      await signOut(auth);
+      // onAuthStateChanged will set user to null.
+      router.push("/login");
     } catch (error) {
-      console.error("Failed to remove user from localStorage", error);
+      console.error("Firebase Logout Error:", error);
     }
-    router.push("/login");
+    setIsLoading(false); // Ensure loading is set to false even if signOut fails
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, firebaseUser, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
