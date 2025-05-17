@@ -1,15 +1,10 @@
 
-"use client"; // Required for using hooks like useAuth
+"use client"; 
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MetricCardProps } from "@/lib/definitions";
 import { DollarSign, Package, Undo, Users, ShieldAlert } from "lucide-react";
-// import type { Metadata } from 'next'; // Cannot use Metadata in client components
-
-// export const metadata: Metadata = {
-//   title: 'Dashboard',
-// };
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/permissions";
 
@@ -48,7 +43,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-6">
         <PageHeader 
           title="Access Denied" 
-          description="You do not have permission to view the dashboard." 
+          description="You do not have the required 'viewDashboard' permission." 
         />
         <Card className="shadow-md">
           <CardHeader className="items-center">
@@ -91,7 +86,6 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-       {/* Placeholder for future charts or more detailed sections */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="shadow-md">
           <CardHeader>
@@ -99,7 +93,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">No recent activity to display yet.</p>
-            {/* Placeholder for activity feed */}
           </CardContent>
         </Card>
         <Card className="shadow-md">
@@ -108,7 +101,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Performance chart coming soon.</p>
-            {/* Placeholder for a chart */}
           </CardContent>
         </Card>
       </div>

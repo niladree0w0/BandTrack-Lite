@@ -7,12 +7,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { LogOut, ShieldAlert } from "lucide-react";
 import { hasPermission } from "@/lib/permissions";
-// import type { Metadata } from 'next'; // Metadata cannot be used in client components directly
-
-// export const metadata: Metadata = {
-//   title: 'Settings',
-// };
-
 
 export default function SettingsPage() {
   const { logout, user } = useAuth();
@@ -22,7 +16,7 @@ export default function SettingsPage() {
       <div className="flex flex-col gap-6">
         <PageHeader 
           title="Access Denied" 
-          description="You do not have permission to access settings." 
+          description="You do not have the required 'manageSettings' permission." 
         />
          <Card className="shadow-md">
           <CardHeader className="items-center">
@@ -54,7 +48,7 @@ export default function SettingsPage() {
             Settings options will be available here in a future update.
             Admins will eventually be able to manage roles and permissions here.
           </p>
-          {user && ( // Should always be true if manageSettings permission is met, but good for safety
+          {user && ( 
             <div>
               <h3 className="text-lg font-medium mb-2">Account</h3>
               <Button variant="outline" onClick={logout}>

@@ -42,14 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let resolvedPermissions: Permission[] = [];
 
         try {
-          // 1. Admin Bootstrap: Check if the email matches the admin email
           if (fbUser.email === ADMIN_EMAIL) {
             resolvedRole = 'admin';
             const adminRoleDocRef = doc(db, "roles", "admin");
             const adminRoleDocSnap = await getDoc(adminRoleDocRef);
-            if (adminRoleDocSnap.exists() && adminRoleDocSnap.data().permissions) {
+            if (adminRoleDocSnap.exists() && adminRoleDocSnap.data()?.permissions) {
               resolvedPermissions = adminRoleDocSnap.data().permissions as Permission[];
-              if (!resolvedPermissions.includes('fullAccess')) { // Ensure admin always has fullAccess
+              if (!resolvedPermissions.includes('fullAccess')) {
                 resolvedPermissions.push('fullAccess');
               }
             } else {
@@ -57,26 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               resolvedPermissions = ['fullAccess'];
             }
           } else {
-            // 2. For other users, fetch their role from 'users/{uid}' collection
             const userDocRef = doc(db, "users", fbUser.uid);
             const userDocSnap = await getDoc(userDocRef);
 
             if (userDocSnap.exists() && userDocSnap.data()?.role) {
               resolvedRole = userDocSnap.data().role as UserRole;
               
-              // 3. Fetch permissions for this role from 'roles/{roleName}' collection
               const roleDocRef = doc(db, "roles", resolvedRole);
               const roleDocSnap = await getDoc(roleDocRef);
               if (roleDocSnap.exists() && roleDocSnap.data()?.permissions) {
                 resolvedPermissions = roleDocSnap.data().permissions as Permission[];
               } else {
                 console.warn(`Permissions for role '${resolvedRole}' not found in 'roles/${resolvedRole}'. User will have no specific permissions.`);
-                resolvedPermissions = [];
+                resolvedPermissions = []; 
               }
             } else {
               console.warn(`User document for UID ${fbUser.uid} or role field not found in Firestore. Assigning default role '${resolvedRole}'.`);
-              // Attempt to fetch permissions for the default role (e.g., 'manager')
-              const defaultRoleDocRef = doc(db, "roles", resolvedRole); // resolvedRole is 'manager' here
+              const defaultRoleDocRef = doc(db, "roles", resolvedRole); 
               const defaultRoleDocSnap = await getDoc(defaultRoleDocRef);
               if (defaultRoleDocSnap.exists() && defaultRoleDocSnap.data()?.permissions) {
                 resolvedPermissions = defaultRoleDocSnap.data().permissions as Permission[];
@@ -88,12 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } catch (error) {
             console.error("Error fetching user role/permissions from Firestore:", error);
-            // Fallback in case of Firestore error - admin gets full access, others get none
             if (fbUser.email === ADMIN_EMAIL) {
                 resolvedRole = 'admin';
                 resolvedPermissions = ['fullAccess'];
             } else {
-                resolvedPermissions = []; // No permissions if Firestore fetch fails for non-admin
+                resolvedPermissions = []; 
             }
         }
 
@@ -103,11 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: resolvedRole,
           permissions: resolvedPermissions,
         };
+        console.log(`[AuthContext] User Authenticated: ${appUser.username}, Role: ${appUser.role}, Permissions: ${JSON.stringify(appUser.permissions)}`);
         setUser(appUser);
 
       } else {
         setUser(null);
         setFirebaseUser(null);
+        console.log("[AuthContext] User signed out or not authenticated.");
       }
       setIsLoading(false);
     });
@@ -119,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, emailInput, passwordInput);
-      // onAuthStateChanged will handle setting the user state.
       router.push("/dashboard"); 
       return true;
     } catch (error) {
@@ -133,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       await signOut(auth);
-      setUser(null); // Explicitly set user to null
+      setUser(null); 
       setFirebaseUser(null);
       router.push("/login");
     } catch (error) {
