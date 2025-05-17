@@ -138,4 +138,4 @@ A brief overview of the main directories:
 
 ---
 
-This README should provide a good overview of the BandTrack Lite application.
+
