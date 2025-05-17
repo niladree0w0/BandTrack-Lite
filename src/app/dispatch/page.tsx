@@ -29,7 +29,9 @@ import { materialTypes } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialDispatch } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { Send } from "lucide-react"; 
+import { Send, ShieldAlert } from "lucide-react"; 
+import { useAuth } from "@/context/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 const dispatchFormSchema = z.object({
   subcontractorId: z.string().min(1, "Subcontractor is required."),
@@ -43,11 +45,11 @@ export default function DispatchPage() {
   const { toast } = useToast();
   const [dispatches, setDispatches] = useState<MaterialDispatch[]>([]);
   const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>([]);
+  const { user } = useAuth();
+  const canManageDispatch = user && hasPermission(user, 'manageDispatch');
 
   useEffect(() => {
     setDispatches(placeholderDispatches);
-    // Subcontractors list might now have duplicates by name if they handle "both" capacities.
-    // The ID will be unique.
     setSubcontractorOptions(placeholderSubcontractors);
   }, []);
   
@@ -58,12 +60,22 @@ export default function DispatchPage() {
       materialType: "",
       quantity: 1,
     },
+    disabled: !canManageDispatch, // Disable form if user cannot manage
   });
 
   function onSubmit(data: DispatchFormValues) {
+    if (!canManageDispatch) {
+      toast({
+        title: "Permission Denied",
+        description: "You do not have permission to create dispatches.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedSubcontractor = subcontractorOptions.find(s => s.id === data.subcontractorId);
     const newDispatch: MaterialDispatch = {
-      id: `disp${dispatches.length + 1}`, // Consider a more robust ID generation
+      id: `disp${dispatches.length + 1}`, 
       subcontractorId: data.subcontractorId,
       subcontractorName: selectedSubcontractor?.name,
       materialType: data.materialType,
@@ -78,12 +90,38 @@ export default function DispatchPage() {
     form.reset();
   }
 
+  if (!canManageDispatch) { // Covers view access too for this specific page's core functionality
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader 
+          title="Access Denied" 
+          description="You do not have permission to manage dispatches." 
+        />
+        <Card className="shadow-md">
+          <CardHeader className="items-center">
+            <ShieldAlert className="h-12 w-12 text-destructive" />
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-lg font-semibold">Permission Required</p>
+            <p className="text-sm text-muted-foreground">
+              Please contact an administrator if you believe this is an error.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Dispatch Manager"
         description="Streamline material dispatch to subcontractors."
-        actions={<Button onClick={form.handleSubmit(onSubmit)}><Send className="mr-2 h-4 w-4" />Create Dispatch</Button>}
+        actions={
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={!canManageDispatch}>
+                <Send className="mr-2 h-4 w-4" />Create Dispatch
+            </Button>
+        }
       />
       <Card className="shadow-md">
         <CardHeader>
@@ -99,7 +137,7 @@ export default function DispatchPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subcontractor</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canManageDispatch}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a subcontractor" />
@@ -123,7 +161,7 @@ export default function DispatchPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Material Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canManageDispatch}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select material type" />
@@ -148,7 +186,7 @@ export default function DispatchPage() {
                     <FormItem>
                       <FormLabel>Quantity</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="Enter quantity" {...field} />
+                        <Input type="number" placeholder="Enter quantity" {...field} disabled={!canManageDispatch}/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

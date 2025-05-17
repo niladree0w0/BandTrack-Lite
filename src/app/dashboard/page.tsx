@@ -1,12 +1,17 @@
+
+"use client"; // Required for using hooks like useAuth
+
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MetricCardProps } from "@/lib/definitions";
-import { DollarSign, Package, Undo, Users } from "lucide-react";
-import type { Metadata } from 'next';
+import { DollarSign, Package, Undo, Users, ShieldAlert } from "lucide-react";
+// import type { Metadata } from 'next'; // Cannot use Metadata in client components
 
-export const metadata: Metadata = {
-  title: 'Dashboard',
-};
+// export const metadata: Metadata = {
+//   title: 'Dashboard',
+// };
+import { useAuth } from "@/context/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 const metrics: MetricCardProps[] = [
   {
@@ -36,6 +41,30 @@ const metrics: MetricCardProps[] = [
 ];
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+
+  if (!user || !hasPermission(user, 'viewDashboard')) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader 
+          title="Access Denied" 
+          description="You do not have permission to view the dashboard." 
+        />
+        <Card className="shadow-md">
+          <CardHeader className="items-center">
+            <ShieldAlert className="h-12 w-12 text-destructive" />
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-lg font-semibold">Permission Required</p>
+            <p className="text-sm text-muted-foreground">
+              Please contact an administrator if you believe this is an error.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader 

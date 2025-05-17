@@ -18,33 +18,46 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/context/AuthContext"; // Import useAuth
+import type { Permission } from "@/lib/definitions"; // Import Permission type
+import { hasPermission } from "@/lib/permissions"; // Import hasPermission
 
 export type NavItem = {
   href: string;
   label: string;
   icon: React.ElementType;
   exactMatch?: boolean;
+  requiredPermission?: Permission; // Add required permission
 };
 
-export const mainNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exactMatch: true },
-  { href: "/dispatch", label: "Dispatch Manager", icon: Truck },
-  { href: "/returns", label: "Return Logger", icon: ArchiveRestore },
-  { href: "/employees", label: "Employee Roster", icon: Users },
+export const allMainNavItems: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exactMatch: true, requiredPermission: "viewDashboard" },
+  { href: "/dispatch", label: "Dispatch Manager", icon: Truck, requiredPermission: "manageDispatch" },
+  { href: "/returns", label: "Return Logger", icon: ArchiveRestore, requiredPermission: "manageReturns" },
+  { href: "/employees", label: "Employee Roster", icon: Users, requiredPermission: "viewEmployees" },
 ];
 
-export const secondaryNavItems: NavItem[] = [
-  { href: "/profile", label: "Profile", icon: UserCircle },
-  { href: "/settings", label: "Settings", icon: Settings },
+export const allSecondaryNavItems: NavItem[] = [
+  { href: "/profile", label: "Profile", icon: UserCircle, requiredPermission: "viewProfile" },
+  { href: "/settings", label: "Settings", icon: Settings, requiredPermission: "manageSettings" },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { user } = useAuth(); // Get the user from AuthContext
+
+  const filteredMainNavItems = allMainNavItems.filter(item => 
+    !item.requiredPermission || (user && hasPermission(user, item.requiredPermission))
+  );
+
+  const filteredSecondaryNavItems = allSecondaryNavItems.filter(item =>
+    !item.requiredPermission || (user && hasPermission(user, item.requiredPermission))
+  );
 
   return (
     <>
       <SidebarMenu>
-        {mainNavItems.map((item) => (
+        {filteredMainNavItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} passHref legacyBehavior>
               <SidebarMenuButton
@@ -64,7 +77,7 @@ export function SidebarNav() {
       </SidebarMenu>
       {/* You can add a separator here if desired */}
       <SidebarMenu className="mt-auto"> 
-        {secondaryNavItems.map((item) => (
+        {filteredSecondaryNavItems.map((item) => (
           <SidebarMenuItem key={item.href}>
             <Link href={item.href} passHref legacyBehavior>
               <SidebarMenuButton

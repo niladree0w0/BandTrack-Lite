@@ -29,7 +29,9 @@ import { qualityStatuses } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import type { MaterialReturn } from "@/lib/definitions";
 import { useState, useEffect } from "react";
-import { Save } from "lucide-react";
+import { Save, ShieldAlert } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { hasPermission } from "@/lib/permissions";
 
 const returnFormSchema = z.object({
   subcontractorId: z.string().min(1, "Subcontractor is required."),
@@ -45,6 +47,8 @@ export default function ReturnsPage() {
   const { toast } = useToast();
   const [returns, setReturns] = useState<MaterialReturn[]>([]);
   const [subcontractorOptions, setSubcontractorOptions] = useState<Subcontractor[]>([]);
+  const { user } = useAuth();
+  const canManageReturns = user && hasPermission(user, 'manageReturns');
 
   useEffect(() => {
     setReturns(placeholderReturns);
@@ -57,12 +61,21 @@ export default function ReturnsPage() {
       subcontractorId: "",
       quantity: 1,
     },
+    disabled: !canManageReturns, // Disable form if user cannot manage
   });
 
   function onSubmit(data: ReturnFormValues) {
+    if (!canManageReturns) {
+       toast({
+        title: "Permission Denied",
+        description: "You do not have permission to log returns.",
+        variant: "destructive",
+      });
+      return;
+    }
     const selectedSubcontractor = subcontractorOptions.find(s => s.id === data.subcontractorId);
     const newReturn: MaterialReturn = {
-      id: `ret${returns.length + 1}`, // Consider a more robust ID generation
+      id: `ret${returns.length + 1}`, 
       subcontractorId: data.subcontractorId,
       subcontractorName: selectedSubcontractor?.name,
       quantity: data.quantity,
@@ -77,13 +90,39 @@ export default function ReturnsPage() {
     });
     form.reset();
   }
+  
+  if (!canManageReturns) { // Covers view access too for this specific page's core functionality
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader 
+          title="Access Denied" 
+          description="You do not have permission to manage material returns." 
+        />
+        <Card className="shadow-md">
+          <CardHeader className="items-center">
+            <ShieldAlert className="h-12 w-12 text-destructive" />
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-lg font-semibold">Permission Required</p>
+            <p className="text-sm text-muted-foreground">
+              Please contact an administrator if you believe this is an error.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Return Logger"
         description="Record finished goods returned by subcontractors."
-        actions={<Button onClick={form.handleSubmit(onSubmit)}><Save className="mr-2 h-4 w-4" />Log Return</Button>}
+        actions={
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={!canManageReturns}>
+                <Save className="mr-2 h-4 w-4" />Log Return
+            </Button>
+        }
       />
       <Card className="shadow-md">
         <CardHeader>
@@ -99,7 +138,7 @@ export default function ReturnsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subcontractor</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canManageReturns}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a subcontractor" />
@@ -124,7 +163,7 @@ export default function ReturnsPage() {
                     <FormItem>
                       <FormLabel>Quantity Returned</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="Enter quantity" {...field} />
+                        <Input type="number" placeholder="Enter quantity" {...field} disabled={!canManageReturns} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -136,7 +175,7 @@ export default function ReturnsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Quality Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!canManageReturns}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select quality status" />

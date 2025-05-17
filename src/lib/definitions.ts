@@ -52,8 +52,8 @@ export type UserRole = typeof userRoles[number];
 // This list should align with the strings you'll use in Firestore 'roles' collection.
 export const permissionsList = [
   'viewDashboard',
-  'manageDispatch',
-  'manageReturns',
+  'manageDispatch', // Covers viewing and interacting with the dispatch page
+  'manageReturns',  // Covers viewing and interacting with the returns page
   'viewEmployees',
   'manageEmployees', 
   'viewProfile',

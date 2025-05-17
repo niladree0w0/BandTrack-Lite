@@ -4,31 +4,33 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-// import type { Metadata } from 'next'; // Metadata cannot be used in client components directly
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ShieldAlert } from "lucide-react";
+import { hasPermission } from "@/lib/permissions";
 
-// export const metadata: Metadata = {
+// export const metadata: Metadata = { // Metadata cannot be used in client components directly
 //   title: 'User Profile',
 // };
 
 export default function ProfilePage() {
   const { user } = useAuth();
 
-  if (!user) {
-    // This page should ideally not be accessible if not logged in,
-    // AppShell handles redirection, but this is a safeguard.
+  if (!user || !hasPermission(user, 'viewProfile')) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader 
-          title="User Profile" 
-          description="Please log in to view your profile." 
+          title="Access Denied" 
+          description="You do not have permission to view this page." 
         />
          <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
+          <CardHeader className="items-center">
+            <ShieldAlert className="h-12 w-12 text-destructive" />
           </CardHeader>
-          <CardContent>
-             <p className="text-sm text-muted-foreground">You need to be logged in to view this page.</p>
+          <CardContent className="text-center">
+             <p className="text-lg font-semibold">Permission Required</p>
+             <p className="text-sm text-muted-foreground">
+                Please contact an administrator if you believe this is an error or if you are not logged in.
+             </p>
           </CardContent>
         </Card>
       </div>
@@ -60,7 +62,7 @@ export default function ProfilePage() {
         <CardContent className="mt-4">
           <div className="space-y-3">
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground">Username</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">Username (Email)</h4>
               <p>{user.username}</p>
             </div>
             <div>
@@ -68,17 +70,23 @@ export default function ProfilePage() {
               <p>{user.id}</p>
             </div>
              <div>
-              <h4 className="text-sm font-medium text-muted-foreground">Permissions</h4>
-              <p className="text-sm text-muted-foreground">
-                {user.role === 'admin' && 'Full access to all features, including user and permission management (to be implemented).'}
-                {user.role === 'manager' && 'Access to operational features like dispatch, returns, and employee roster based on assigned permissions (permissions TBI).'}
-                {user.role === 'proprietor' && 'Access to view dashboards and reports based on assigned permissions (permissions TBI).'}
-              </p>
+              <h4 className="text-sm font-medium text-muted-foreground">Assigned Role</h4>
+              <p>{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium text-muted-foreground">Effective Permissions</h4>
+              {user.permissions.length > 0 ? (
+                <ul className="list-disc list-inside text-sm">
+                  {user.permissions.map(p => <li key={p}>{p}</li>)}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No specific permissions assigned.</p>
+              )}
             </div>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">
             More profile management features (like password change, etc.) are planned for future updates.
-            The detailed permission system is yet to be implemented.
+            The detailed permission system is managed via Firestore roles.
           </p>
         </CardContent>
       </Card>
