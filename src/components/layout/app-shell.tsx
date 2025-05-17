@@ -15,23 +15,21 @@ import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/icons/logo";
 import { SidebarNav } from "./sidebar-nav";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // Import usePathname
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Get reactive pathname
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      // If done loading and no user, redirect to login, unless already on login page
-      // This check helps prevent redirect loops if login page itself is wrapped by AppShell (it's not here)
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        router.replace("/login");
-      }
+    // Only redirect if NOT loading, no user, AND not already on the login page.
+    if (!isLoading && !user && pathname !== "/login") {
+      router.replace("/login");
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, pathname]); // Added pathname to dependency array
 
   if (isLoading) {
     return (
@@ -59,24 +57,23 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
   
-  // If there's no user and we're not on the login page (though logic above should redirect),
-  // prevent rendering the main app shell. This is a fallback.
-  // The main redirection logic is now in useEffect.
-  // If trying to access a protected route directly while not logged in, this also prevents flicker.
-  if (!user && typeof window !== 'undefined' && window.location.pathname !== '/login') {
-     return (
+  // If user is not authenticated
+  if (!user) {
+    if (pathname === "/login") {
+      // If on the login page, render children (LoginPage) without the main app shell
+      return <>{children}</>;
+    } else {
+      // If not on the login page, useEffect will redirect. Show a loading indicator.
+      return (
         <div className="flex min-h-screen items-center justify-center">
-            <p>Redirecting to login...</p>
+          <p>Loading...</p>
         </div>
-     ); // Or a loading spinner
+      );
+    }
   }
   
-  // Only render the full AppShell if user is authenticated or if it's the login page itself being rendered
-  // For this app, login page has its own minimal layout, so AppShell is only for authenticated routes.
-  if (!user) {
-    return <>{children}</>; // Allows login page to render without the shell
-  }
-
+  // If we reach here, user is authenticated and not loading
+  // Render the full AppShell for authenticated users.
   return (
     <SidebarProvider defaultOpen>
       <ShellContent>{children}</ShellContent>
@@ -85,8 +82,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function ShellContent({ children }: { children: ReactNode }) {
-  const { open, toggleSidebar } = useSidebar(); // This hook is fine if SidebarProvider is a parent
-  const { user } = useAuth(); // Get user info
+  const { open, toggleSidebar } = useSidebar(); 
+  const { user } = useAuth(); 
 
   return (
     <div className="flex min-h-screen w-full">
@@ -114,7 +111,6 @@ function ShellContent({ children }: { children: ReactNode }) {
       <SidebarInset className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 sm:px-6">
           <SidebarTrigger className="md:hidden" />
-          {/* Placeholder for breadcrumbs or global actions */}
           {user && <span className="ml-auto text-sm">Welcome, {user.username}!</span>}
         </header>
         <main className="flex-1 overflow-auto p-4 sm:p-6">
